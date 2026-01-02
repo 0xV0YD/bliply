@@ -20,6 +20,11 @@ PRICING_CONFIG = {
         "threshold": 80_000_000,
         "high_volume_price": 0.00000062,
         "low_volume_price": 0.000000525
+    },
+    "infura": {
+        "threshold": 100_000, # Example threshold
+        "high_volume_price": 0.00000050, # Example price
+        "low_volume_price": 0.00000000 # Free tier
     }
 }
 
@@ -108,5 +113,12 @@ PROVIDERS = [
             {"limit": float("inf"), "price_per_million": 0.525}
         ],
         "method_credits": QUICKNODE_CREDITS
+    },
+    {
+        "name": "Infura",
+        "base_url": os.getenv("INFURA_URL"),
+        "type": "flat",
+        "price_per_million": 0.0, # Assuming free tier for now or custom logic
+        "variable_price": False
     }
 ]

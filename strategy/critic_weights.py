@@ -14,8 +14,12 @@ def compute_critic_weights(df: pd.DataFrame, criteria: list[str]) -> np.ndarray:
     # Standard deviation
     stds = np.std(norm_matrix, axis=0, ddof=1)
 
-    # Correlation matrix (handle NaNs)
-    corr_matrix = np.corrcoef(norm_matrix.T)
+    # Handle constant columns to avoid division by zero in corrcoef
+    # If a column is constant, its correlation with everything else is undefined (NaN).
+    # We can mask it or just suppress the warning since we handle NaNs later.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        corr_matrix = np.corrcoef(norm_matrix.T)
+    
     corr_matrix = np.nan_to_num(corr_matrix, nan=0.0)
 
     # Information content Cj

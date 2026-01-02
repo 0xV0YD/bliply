@@ -24,7 +24,11 @@ class MetricsStore:
             "Eligible": True,
             "RequestCount": self.request_counts[key],
         }
-        self.df = pd.concat([self.df, pd.DataFrame([row])], ignore_index=True)
+        new_row_df = pd.DataFrame([row])
+        if self.df.empty:
+            self.df = new_row_df
+        else:
+            self.df = pd.concat([self.df, new_row_df], ignore_index=True)
 
     def get_df(self) -> pd.DataFrame:
         """Return full copy of all records."""
@@ -58,11 +62,19 @@ class MetricsStore:
 
 def get_latest_provider_snapshot(providers: list, method: str) -> pd.DataFrame:
     """Return latest record per provider for a given method."""
-    latest = pd.concat([p.metrics.get_latest(method) for p in providers], ignore_index=True)
+    dfs = [p.metrics.get_latest(method) for p in providers]
+    dfs = [df for df in dfs if not df.empty and not df.isna().all().all()]
+    if not dfs:
+        return pd.DataFrame()
+    latest = pd.concat(dfs, ignore_index=True)
     return latest
 
 
 def get_all_historical_data(providers: list, method: str) -> pd.DataFrame:
     """Return all historical records across providers for a given method."""
-    all_records = pd.concat([p.metrics.get_all_records(method) for p in providers], ignore_index=True)
-    return all_records if not all_records.empty else pd.DataFrame()
+    dfs = [p.metrics.get_all_records(method) for p in providers]
+    dfs = [df for df in dfs if not df.empty and not df.isna().all().all()]
+    if not dfs:
+        return pd.DataFrame()
+    all_records = pd.concat(dfs, ignore_index=True)
+    return all_records

@@ -1,9 +1,9 @@
 import random
 import time
-import requests
 from .metrics import MetricsStore
 from strategy.scoring_engine import calculate_dynamic_scores
 from core.config import PROVIDERS, PRICING_CONFIG, ALCHEMY_COMPUTE_UNITS, QUICKNODE_CREDITS
+from services.rpc_client import RPCClient
 
 class RPCProvider:
     def __init__(self, config: dict):
@@ -11,6 +11,7 @@ class RPCProvider:
         self.base_url = config["base_url"]
         self.config = config
         self.metrics = MetricsStore()
+        self.client = RPCClient()
     
     def price_per_call(self, method: str = None) -> float:
         return 0.0
@@ -20,9 +21,7 @@ class RPCProvider:
         method = payload.get("method", "")
         
         try:
-            response = requests.post(self.base_url, json=payload, timeout=10)
-            response.raise_for_status()
-            result = response.json()
+            result = self.client.call(self.base_url, payload)
         except Exception as e:
             result = {"error": str(e)}
         finally:
@@ -73,6 +72,14 @@ class QuickNodeProvider(RPCProvider):
             return PRICING_CONFIG["quicknode"]["high_volume_price"] * credits
         return PRICING_CONFIG["quicknode"]["low_volume_price"] * credits
 
+class InfuraProvider(RPCProvider):
+    def price_per_call(self, method: str = None) -> float:
+        # Simple logic for now, can be expanded based on real Infura pricing
+        total_requests = self.metrics.get_request_count(self.name, method)
+        if total_requests > PRICING_CONFIG["infura"]["threshold"]:
+             return PRICING_CONFIG["infura"]["high_volume_price"]
+        return PRICING_CONFIG["infura"]["low_volume_price"]
+
 class BestProvider(RPCProvider):
     def __init__(self):
         super().__init__({"name": "Best", "base_url": ""})  # base_url unused
@@ -92,6 +99,8 @@ def load_providers():
             instances.append(AlchemyProvider(p))
         elif name == "quicknode":
             instances.append(QuickNodeProvider(p))
+        elif name == "infura":
+            instances.append(InfuraProvider(p))
 
     # Add virtual "best" provider
     instances.append(BestProvider())
